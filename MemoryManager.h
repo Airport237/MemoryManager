@@ -1,6 +1,10 @@
 #pragma once
 #include <iostream>
+#include <list>
 #include <functional>
+#include <stdint.h>
+#include <cmath>
+
 
 class MemoryManager
 {

@@ -53,13 +53,14 @@ void* MemoryManager::getList()
         }
         return list;
     }
+    return nullptr;
 }
 
 
 void* MemoryManager::allocate(size_t sizeInBytes)
 {
     void* list = getList();
-    int blockLength = ceil((float)sizeInBytes/wordSize);
+    int blockLength = std::ceil((float)sizeInBytes/wordSize);
     int holeInd = allocator(blockLength, list);
     delete[] list;
 
@@ -186,39 +187,39 @@ void MemoryManager::printBlocks() {
     }
 }
 
-int bestFit(int sizeInWords, void *list)
-{
-    uint16_t* listU = (uint16_t*)list;
-    int minInd = -1;
-    int min = -1;
-    for (int i = 1; i < listU[0]; i = i+2)
-    {
-        //if the length of the hole is less than min (and its not first big enough hole) and greater than or equal 
-        //to the sizeInWords set it to the new min
-        if (listU[i+1] >= sizeInWords && (min == -1 || listU[i+1] < min))
-        {
-            min = listU[i+1];
-            minInd = listU[i];
-        }
-    }
-    return minInd;
-};
+// int bestFit(int sizeInWords, void *list)
+// {
+//     uint16_t* listU = (uint16_t*)list;
+//     int minInd = -1;
+//     int min = -1;
+//     for (int i = 1; i < listU[0]; i = i+2)
+//     {
+//         //if the length of the hole is less than min (and its not first big enough hole) and greater than or equal 
+//         //to the sizeInWords set it to the new min
+//         if (listU[i+1] >= sizeInWords && (min == -1 || listU[i+1] < min))
+//         {
+//             min = listU[i+1];
+//             minInd = listU[i];
+//         }
+//     }
+//     return minInd;
+// };
 
-int worstFit(int sizeInWords, void *list)
-{
-    uint16_t* listU = (uint16_t*)list;
-    int minInd = -1;
-    int min = -1;
-    for (int i = 1; i < listU[0]; i = i+2)
-    {
-        //if the length of the hole is greater than min and greater than or equal 
-        //to the sizeInWords set it to the new min
-        if (listU[i+1] >= sizeInWords && listU[i+1] > min)
-        {
-            min = listU[i+1];
-            minInd = listU[i];
-        }
-    }
-    return minInd;
-};
+// int worstFit(int sizeInWords, void *list)
+// {
+//     uint16_t* listU = (uint16_t*)list;
+//     int minInd = -1;
+//     int min = -1;
+//     for (int i = 1; i < listU[0]; i = i+2)
+//     {
+//         //if the length of the hole is greater than min and greater than or equal 
+//         //to the sizeInWords set it to the new min
+//         if (listU[i+1] >= sizeInWords && listU[i+1] > min)
+//         {
+//             min = listU[i+1];
+//             minInd = listU[i];
+//         }
+//     }
+//     return minInd;
+// };
 
