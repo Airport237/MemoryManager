@@ -9,7 +9,6 @@ void MemoryManager::initialize(size_t sizeInWords)
         storage = new uint8_t[sizeInWords*getWordSize()];
         //Initializes first hole as entire array 
         blocks.push_back(new block(0,sizeInWords, true));
-        numHoles = 1;
     }
 }
 
@@ -44,10 +43,13 @@ void* MemoryManager::getList()
         int counter = 1;
         for (auto iter = blocks.begin(); iter != blocks.end(); iter++)
         {
-            list[counter] = (*iter)->start;
-            counter++;
-            list[counter] = ((*iter)->end - (*iter)->start);
-            counter++;
+            if((*iter)->hole)
+            {
+                list[counter] = (*iter)->start;
+                counter++;
+                list[counter] = ((*iter)->end - (*iter)->start);
+                counter++;
+            }
         }
         return list;
     }
@@ -99,7 +101,72 @@ void* MemoryManager::allocate(size_t sizeInBytes)
 
 void MemoryManager::free(void *address)
 {
+    //convert address from bytes to blocks
+    int blockInd = ((uint8_t*)address - storage)/wordSize;
+
+    //Find the block
+    auto iter = blocks.begin();
+    for(iter; iter != blocks.end(); iter++)\
+    {
+        if ((*iter)->start == blockInd)
+            break;
+    }
+    block* current = *iter;
+
+    //If you cant find the block
+    if (iter == blocks.end() || current->hole == true)
+        return;
     
+    //Turn block to hole
+    current->hole = true;
+    numHoles++;
+
+    //3 cases, Block left hole right, block right and hole left, and hole left and hole right (end and start are the same as if a block was to the right or left respectivley)
+    auto prev = iter;
+    bool start = true;
+    auto next = iter;
+    bool end = true;
+    //To prevent seg faults, if we can move forward or backward we know we are not at the end/start
+    if(prev != blocks.begin())
+    {
+        prev--;
+        start = false;
+    }
+
+    if (next != blocks.end())
+    {
+        next++;
+        end = false;
+    }
+
+    if(!start && (*prev)->hole && !end && (*next)->hole)
+    {
+        block* prevBlock = *prev;
+        block* nextBlock = *next;
+        current->start = prevBlock->start;
+        current->end = nextBlock->end;
+        blocks.erase(prev);
+        blocks.erase(next);
+        delete prevBlock;
+        delete nextBlock;
+    }else if((start  || (!start && !(*prev)->hole) && (*next)->hole))
+    {
+        //Block is at the start or there is a bloack to the left and there is a hole to the right merge into big hole 
+        // (If there is not a hole this simply becomes a hole with the same start and end and we dont have to do anything)
+        block* nextBlock = *next;
+        current->end = nextBlock->end;
+        blocks.erase(next);
+        delete nextBlock;
+        
+    }else if (end || (!end && !(*next)->hole) && (*prev)->hole)
+    {
+        //Same as above case but at the end of the list
+        block* prevBlock = *prev;
+        current->start = prevBlock->start;
+        blocks.erase(prev);
+        delete prevBlock;
+    }
+
 }
 
 
@@ -109,6 +176,15 @@ void MemoryManager::setAllocator(std::function<int(int, void *)> allocator)
     this->allocator = allocator;
 }
 
+void MemoryManager::printBlocks() {
+    for (auto iter = blocks.begin(); iter != blocks.end(); iter++) 
+    {
+        std::cout << "Start: " << (*iter)->start << std::endl;
+        std::cout << "End: " << (*iter)->end << std::endl;
+        std::cout << "Hole: " << (*iter)->hole << std::endl;
+        std::cout << std::endl;
+    }
+}
 
 int bestFit(int sizeInWords, void *list)
 {

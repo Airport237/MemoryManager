@@ -24,6 +24,7 @@ class MemoryManager
         };
 
     public:
+
         std::list<block*> blocks;
         MemoryManager(unsigned wordSize, std::function<int(int, void *)> allocator);
         ~MemoryManager();
@@ -38,5 +39,7 @@ class MemoryManager
         unsigned getWordSize();
         void *getMemoryStart();
         unsigned getMemoryLimit();
-
+        void printBlocks();
+        int bestFit(int sizeInWords, void *list);
+        int worstFit(int sizeInWords, void *list);
 };
