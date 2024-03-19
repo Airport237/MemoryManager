@@ -8,20 +8,23 @@ class MemoryManager
         unsigned wordSize;
         std::function<int(int, void *)> allocator;
         uint8_t* storage = nullptr;
-        size_t sizeInWordsG;
-    public:
-        struct hole
+        size_t sizeInWords;
+        int numHoles = 0;
+        struct block
         {
             int start;
             int end;
-            hole(int start_, int end_)
+            bool hole;
+            block(int start, int end, bool hole)
             {
-                start = start_;
-                end = end_;
+                this->start = start;
+                this->end = end;
+                this->hole = hole;
             };
         };
-        
-        std::list<hole> holes;
+
+    public:
+        std::list<block*> blocks;
         MemoryManager(unsigned wordSize, std::function<int(int, void *)> allocator);
         ~MemoryManager();
         void initialize(size_t sizeInWords);

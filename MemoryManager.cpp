@@ -4,11 +4,12 @@ void MemoryManager::initialize(size_t sizeInWords)
 {
     if (sizeInWords <= 65536)
     {
-        sizeInWordsG = sizeInWords;
+        this->sizeInWords = sizeInWords;
         //Creates the memory array
         storage = new uint8_t[sizeInWords*getWordSize()];
         //Initializes first hole as entire array 
-        holes.push_back(hole(0,sizeInWords));
+        blocks.push_back(new block(0,sizeInWords, true));
+        numHoles = 1;
     }
 }
 
@@ -35,17 +36,17 @@ void* MemoryManager::getList()
 {
     //As long as a memory array has been intiliazed and some memory has been allocated into the linked list such that
     //the holes list is not in its intial state
-    if (storage != nullptr && !(holes.front().start == 0 && holes.front().end == sizeInWordsG))
+    if (storage != nullptr && !(blocks.front()->start == 0 && blocks.front()->end == sizeInWords))
     {
-        uint16_t length = holes.size();
+        uint16_t length = blocks.size();
         uint16_t* list = new uint16_t[(2*length + 1)];
         list[0] = length;
         int counter = 1;
-        for (auto iter = holes.begin(); iter != holes.end(); ++iter)
+        for (auto iter = blocks.begin(); iter != blocks.end(); iter++)
         {
-            list[counter] = iter->start;
+            list[counter] = (*iter)->start;
             counter++;
-            list[counter] = (iter->end - iter->start);
+            list[counter] = ((*iter)->end - (*iter)->start);
             counter++;
         }
         return list;
@@ -56,14 +57,57 @@ void* MemoryManager::getList()
 void* MemoryManager::allocate(size_t sizeInBytes)
 {
     void* list = getList();
-    int holeInd = allocator(sizeInBytes*wordSize, list);
-    
-
-
+    int blockLength = ceil((float)sizeInBytes/wordSize);
+    int holeInd = allocator(blockLength, list);
     delete[] list;
+
+    if (holeInd == -1)
+    {
+        return nullptr;
+    }
+    //Find the block
+    auto iter = blocks.begin();
+    for (iter; iter != blocks.end(); iter++)
+    {
+        if ((*iter)->start == holeInd)
+            break;
+    }
+    //Could not find hole
+    block* current = *iter;
+    if (iter == blocks.end())
+        return nullptr;
+
+    
+    //Need to find start and end of new hole
+    int newStart = holeInd + blockLength;
+    int newEnd = current->end;
+
+    //Update the changing hole to a memblock
+    current->end = current->start + blockLength;
+    current->hole = false;
+    numHoles--;
+
+    //If the new block doesn't fit perfectly we need to append a hole to the end
+    if (newEnd - newStart != 0)
+    {
+        iter++;
+        blocks.insert(iter,new  block(newStart, newEnd, true));
+        numHoles++;
+    }
+    return &storage[holeInd*wordSize];
+}
+
+void MemoryManager::free(void *address)
+{
+    
 }
 
 
+
+void MemoryManager::setAllocator(std::function<int(int, void *)> allocator)
+{
+    this->allocator = allocator;
+}
 
 
 int bestFit(int sizeInWords, void *list)
@@ -101,3 +145,4 @@ int worstFit(int sizeInWords, void *list)
     }
     return minInd;
 };
+
