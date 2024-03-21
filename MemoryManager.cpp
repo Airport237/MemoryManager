@@ -2,19 +2,18 @@
 
 void MemoryManager::initialize(size_t sizeInWords)
 {
-    if (sizeInWords <= 65536)
+    if (sizeInWords <= 65536 && sizeInWords > 0)
     {
+        if(storage)
+            shutdown();
+             
         this->sizeInWords = sizeInWords;
         //Creates the memory array
         storage = new uint8_t[sizeInWords*getWordSize()];
         //Initializes first hole as entire array 
         blocks.push_back(new block(0,sizeInWords, true));
+        numHoles = 1;
     }
-}
-
-MemoryManager::~MemoryManager()
-{
-    shutdown();
 }
 
 unsigned MemoryManager::getWordSize()
@@ -28,6 +27,15 @@ void MemoryManager::shutdown()
     {
         //Needs to delete ll nodes and potentially free get list stuff
         delete[] storage;
+        storage = nullptr;
+        auto iter = blocks.begin();
+        while(iter != blocks.end())
+        {
+            block* current = *iter;
+            iter++;
+            delete current;
+        }
+        blocks.clear();
     }
 }
 
@@ -35,9 +43,9 @@ void* MemoryManager::getList()
 {
     //As long as a memory array has been intiliazed and some memory has been allocated into the linked list such that
     //the holes list is not in its intial state
-    if (storage != nullptr && !(blocks.front()->start == 0 && blocks.front()->end == sizeInWords))
+    if (storage)
     {
-        uint16_t length = blocks.size();
+        uint16_t length = numHoles;
         uint16_t* list = new uint16_t[(2*length + 1)];
         list[0] = length;
         int counter = 1;
@@ -53,19 +61,22 @@ void* MemoryManager::getList()
         }
         return list;
     }
+    //cout << "Invalid List" << endl;
     return nullptr;
 }
 
 
 void* MemoryManager::allocate(size_t sizeInBytes)
 {
-    void* list = getList();
+    uint16_t* list = static_cast<uint16_t*> (getList());
     int blockLength = std::ceil((float)sizeInBytes/wordSize);
     int holeInd = allocator(blockLength, list);
+    cout << holeInd << endl;
     delete[] list;
 
     if (holeInd == -1)
     {
+        cout << "invalid list" << endl;
         return nullptr;
     }
     //Find the block
@@ -78,7 +89,10 @@ void* MemoryManager::allocate(size_t sizeInBytes)
     //Could not find hole
     block* current = *iter;
     if (iter == blocks.end())
+    {
+        cout <<"Could not find hole" << endl;
         return nullptr;
+    }
 
     
     //Need to find start and end of new hole
@@ -93,6 +107,7 @@ void* MemoryManager::allocate(size_t sizeInBytes)
     //If the new block doesn't fit perfectly we need to append a hole to the end
     if (newEnd - newStart != 0)
     {
+        cout << "Adding Hole" << endl;
         iter++;
         blocks.insert(iter,new  block(newStart, newEnd, true));
         numHoles++;
@@ -150,6 +165,8 @@ void MemoryManager::free(void *address)
         blocks.erase(next);
         delete prevBlock;
         delete nextBlock;
+        numHoles--;
+        numHoles--;
     }else if((start  || (!start && !(*prev)->hole) && (*next)->hole))
     {
         //Block is at the start or there is a bloack to the left and there is a hole to the right merge into big hole 
@@ -158,6 +175,7 @@ void MemoryManager::free(void *address)
         current->end = nextBlock->end;
         blocks.erase(next);
         delete nextBlock;
+        numHoles--;
         
     }else if (end || (!end && !(*next)->hole) && (*prev)->hole)
     {
@@ -166,6 +184,7 @@ void MemoryManager::free(void *address)
         current->start = prevBlock->start;
         blocks.erase(prev);
         delete prevBlock;
+        numHoles--;
     }
 
 }
@@ -177,11 +196,22 @@ void MemoryManager::setAllocator(std::function<int(int, void *)> allocator)
     this->allocator = allocator;
 }
 
+void* MemoryManager::getMemoryStart() 
+{
+    return storage;
+}
+
+unsigned MemoryManager::getMemoryLimit() 
+{
+    return sizeInWords * wordSize;
+}
+
+
 void MemoryManager::printBlocks() {
     for (auto iter = blocks.begin(); iter != blocks.end(); iter++) 
     {
         std::cout << "Start: " << (*iter)->start << std::endl;
-        std::cout << "End: " << (*iter)->end << std::endl;
+        std::cout << "Length: " << (*iter)->end - (*iter)->start << std::endl;
         std::cout << "Hole: " << (*iter)->hole << std::endl;
         std::cout << std::endl;
     }
