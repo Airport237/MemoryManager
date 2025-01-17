@@ -1,4 +1,12 @@
-# OS-P2
+# Memory Manager
+Dependencies
+- g++
+
+Build Directions
+- Clone the repository
+- Configure the main method as desired to allocate and free data
+- Execute Command "make" to compile
+
 Interact with this project through the creation of an object of the MemoryManager class with parameters wordSize and allocator.
 
 Word size represents how large a given block of memory will be, and allocator controls what kind of algortihm will be used to 
